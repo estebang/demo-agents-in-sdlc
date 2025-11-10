@@ -66,11 +66,21 @@ def create_game() -> tuple[Response, int]:
     if not category:
         return jsonify({"error": "Category not found"}), 404
     
+    # Validate title length
+    title = data['title']
+    if not isinstance(title, str) or len(title.strip()) < 2:
+        return jsonify({"error": "Game title must be at least 2 characters"}), 400
+    
+    # Validate description length
+    description = data['description']
+    if not isinstance(description, str) or len(description.strip()) < 10:
+        return jsonify({"error": "Description must be at least 10 characters"}), 400
+    
     try:
         # Create new game
         new_game = Game(
-            title=data['title'],
-            description=data['description'],
+            title=title,
+            description=description,
             publisher_id=data['publisher_id'],
             category_id=data['category_id'],
             star_rating=data.get('star_rating')
@@ -82,11 +92,9 @@ def create_game() -> tuple[Response, int]:
         # Return the created game
         return jsonify(new_game.to_dict()), 201
         
-    except ValueError as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        db.session.rollback()
+        # Don't expose internal error details
         return jsonify({"error": "Failed to create game"}), 500
 
 @games_bp.route('/api/games/<int:id>', methods=['PUT'])
@@ -106,11 +114,17 @@ def update_game(id: int) -> tuple[Response, int] | Response:
     try:
         # Update title if provided
         if 'title' in data:
-            game.title = data['title']
+            title = data['title']
+            if not isinstance(title, str) or len(title.strip()) < 2:
+                return jsonify({"error": "Game title must be at least 2 characters"}), 400
+            game.title = title
         
         # Update description if provided
         if 'description' in data:
-            game.description = data['description']
+            description = data['description']
+            if not isinstance(description, str) or len(description.strip()) < 10:
+                return jsonify({"error": "Description must be at least 10 characters"}), 400
+            game.description = description
         
         # Update star_rating if provided
         if 'star_rating' in data:
@@ -136,11 +150,9 @@ def update_game(id: int) -> tuple[Response, int] | Response:
         updated_game = get_games_base_query().filter(Game.id == id).first()
         return jsonify(updated_game.to_dict())
         
-    except ValueError as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        db.session.rollback()
+        # Don't expose internal error details
         return jsonify({"error": "Failed to update game"}), 500
 
 @games_bp.route('/api/games/<int:id>', methods=['DELETE'])
